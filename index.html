@@ -1,1 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroPlan | Outil Éco-esthétique</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #28a745; 
+            border-bottom: 3px solid #28a745;
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+        }
+        .controls {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px dashed #28a74555;
+            border-radius: 8px;
+        }
+        .image-display {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        .image-box {
+            width: 48%;
+            min-width: 350px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        img, canvas {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 10px auto;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        progress {
+            accent-color: #28a745;
+            height: 15px;
+        }
+    </style>
+</head>
+<body>
 
+<div class="container">
+    <h1>📐 AeroPlan: Générateur de Plans Aériens</h1>
+    <p>Convertissez les images aériennes de bâtiments en schémas filaires d'ingénierie (Wireframes) avec mesures en pixels.</p>
+
+    <div class="controls">
+        <label for="imageUpload">
+            **Étape 1:** Télécharger l'image aérienne du bâtiment (Vue Aérienne):
+        </label>
+        <input type="file" id="imageUpload" accept="image/*">
+        
+        <button id="processButton" onclick="processImage()" disabled>
+            **Étape 2:** Générer l'Esquisse et les Mesures
+        </button>
+        
+        <progress id="progressBar" value="0" max="100" style="width: 100%; margin-top: 15px; display: none;"></progress>
+        <p id="progressPercent" style="margin-top: 5px; font-weight: bold; display: none; color: #28a745;"></p>
+    </div>
+
+    <div class="image-display">
+        <div class="image-box">
+            <h3>Image Originale (Source)</h3>
+            <img id="originalImage" alt="Image Originale" style="display:none;">
+        </div>
+        <div class="image-box">
+            <h3>Esquisse Ingénierie (Sortie AeroPlan)</h3>
+            <canvas id="outputCanvas" style="display:none;"></canvas>
+            <div id="measurements" style="text-align: left; margin-top: 15px; font-size: 0.9em;"></div>
+            <p id="statusMessage"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const imageUpload = document.getElementById('imageUpload');
+    const originalImage = document.getElementById('originalImage');
+    const outputCanvas = document.getElementById('outputCanvas');
+    const processButton = document.getElementById('processButton');
+    const statusMessage = document.getElementById('statusMessage');
+    const measurementsDiv = document.getElementById('measurements');
+    const ctx = outputCanvas.getContext('2d');
+
+    let imageLoaded = false;
+
+    imageUpload.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                originalImage.src = e.target.result;
+                originalImage.style.display = 'block';
+                imageLoaded = true;
+                processButton.disabled = false;
+                outputCanvas.style.display = 'none';
+                measurementsDiv.innerHTML = '';
+                statusMessage.textContent = 'Image chargée. Prêt pour AeroPlan...';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    function processImage() {
+        if (!imageLoaded) return;
+
+        statusMessage.textContent = 'Traitement en cours...';
+        processButton.disabled = true;
+        const progressBar = document.getElementById('progressBar');
+        const progressPercent = document.getElementById('progressPercent');
+        
+        progressBar.style.display = 'block';
+        progressPercent.style.display = 'block';
+        progressBar.value = 0;
+        progressPercent.textContent = '0%';
+        measurementsDiv.innerHTML = 'Analyse en cours...';
+        
+        const img = new Image();
+        img.onload = function() {
+            outputCanvas.width = img.width;
+            outputCanvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            const imageData = ctx.getImageData(0, 0, img.width, img.height);
+            
+            const worker = new Worker('worker.js?v=3'); // v=3 pour forcer la mise à jour
+            
+            worker.onmessage = function(e) {
+                if (e.data.type === 'progress') {
+                    progressBar.value = e.data.percent;
+                    progressPercent.textContent = e.data.percent + '%';
+                    statusMessage.textContent = `Génération de l'esquisse... ${e.data.percent}% terminé`;
+                } else if (e.data.type === 'result') {
+                    const resultData = new Uint8ClampedArray(e.data.data);
+                    const finalImageData = new ImageData(resultData, e.data.width, e.data.height);
+                    ctx.putImageData(finalImageData, 0, 0);
+
+                    // Affichage des mesures (Inclut les nouveaux champs)
+                    let htmlOutput = '<h4>Mesures en Pixels (Approximation):</h4>';
+                    htmlOutput += `<li>**Largeur Totale (Overall Width):** ${e.data.analysis.overallWidth} px</li>`;
+                    htmlOutput += `<li>**Hauteur Totale (Overall Height):** ${e.data.analysis.overallHeight} px</li>`;
+                    htmlOutput += `<li>**Comptage des Fenêtres (Window Count):** ${e.data.analysis.windowCount}</li>`;
+                    htmlOutput += `<li>**Largeur Moyenne Fenêtre Carrée:** ${e.data.analysis.squareWindowWidth} px (Approximation)</li>`; // الحقل الجديد
+                    htmlOutput += `<li>**Comptage Fenêtres Arrondies:** ${e.data.analysis.roundedWindowCount} (Requires Advanced CV)</li>`; // الحقل الجديد
+                    htmlOutput += `<li>**Angle de Pente de Toit (Roof Slope):** ${e.data.analysis.slopeAngle}°</li>`;
+                    measurementsDiv.innerHTML = htmlOutput;
+
+                    statusMessage.textContent = '✅ Génération de l\'esquisse terminée !';
+                    outputCanvas.style.display = 'block';
+                    processButton.disabled = false;
+                    progressBar.style.display = 'none';
+                    progressPercent.style.display = 'none';
+                    worker.terminate();
+                }
+            };
+
+            // Démarrage du traitement
+            worker.postMessage({ 
+                imageData, 
+                width: img.width, 
+                height: img.height 
+            }, [imageData.data.buffer]);
+        };
+
+        img.src = originalImage.src;
+    }
+</script>
+
+</body>
+</html>
