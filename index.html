@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroPlan | Outil Éco-esthétique</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #28a745; 
+            border-bottom: 3px solid #28a745;
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+        }
+        .controls {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px dashed #28a74555;
+            border-radius: 8px;
+        }
+        .controls label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .controls input[type="file"], .controls input[type="number"], .controls select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 90%;
+            max-width: 300px;
+            margin-top: 5px;
+        }
+        .image-display {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        .image-box {
+            width: 48%;
+            min-width: 350px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        img, canvas {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 10px auto;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        progress {
+            accent-color: #28a745;
+            height: 15px;
+        }
+        .unit-conversion {
+            margin-top: 20px;
+            padding: 15px;
+            border-top: 2px solid #28a745;
+            border-bottom: 2px solid #28a745;
+            margin-top: 25px;
+        }
+        .action-buttons button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .download-btn {
+            background-color: #007bff;
+            color: white;
+        }
+        .clear-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+        .auto-mode-checkbox { 
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #e9f7ef;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .auto-mode-checkbox input {
+            width: auto;
+            margin-right: 10px;
+        }
+        .manual-fields {
+            transition: opacity 0.3s ease;
+        }
+        .manual-fields.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        #groundImagesPreview {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 5px;
+            background-color: #fcfcfc;
+            border-radius: 5px;
+        }
+        #groundImagesPreview img {
+            max-width: 80px;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📐 AeroPlan: Générateur de Plans Aériens</h1>
+    <p>Outil d'analyse pour la rénovation éco-esthétique basée sur le style classique européen.</p>
+
+    <div class="controls">
+        <label for="aerialImageUpload">
+            **Étape 1:** Télécharger l'image aérienne du bâtiment (Vue Aérienne):
+        </label>
+        <input type="file" id="aerialImageUpload" accept="image/*">
+
+        <label for="groundImagesUpload" style="margin-top: 15px;">
+            **Étape 1b (اختياري):** تحميل صور أرضية إضافية (لتحسين دقة الواجهة):
+        </label>
+        <input type="file" id="groundImagesUpload" accept="image/*" multiple>
+        <div id="groundImagesPreview"></div>
+        
+        <div class="auto-mode-checkbox">
+            <input type="checkbox" id="autoMode" checked>
+            <label for="autoMode" style="margin-bottom: 0; font-weight: bold; color: #28a745;">
+                **تفعيل الوضع التلقائي (قياسات تخمينية)**
+            </label>
+        </div>
+        
+        <div id="manualFields" class="manual-fields disabled">
+            <label for="scaleFactor" style="margin-top: 15px;">
+                **Étape 2a (يدوي):** Facteur d'Échelle (Pixels par Mètre)
+            </label>
+            <input type="number" id="scaleFactor" value="100" min="1" step="1">
+            
+            <label for="floorCount" style="margin-top: 15px; color: #007bff;">
+                **Étape 2b (يدوي):** Nombre d'étages observés:
+            </label>
+            <input type="number" id="floorCount" value="4" min="1" step="1" max="20" style="max-width: 150px;">
+        </div>
+
+        <label for="windowType" style="margin-top: 15px; color: #007bff;">
+            **Étape 2c: Assistance AI:** Type de Fenêtre Dominant (Style Classique):
+        </label>
+        <select id="windowType" style="max-width: 300px;">
+            <option value="square">Carrée (Murs Plats)</option>
+            <option value="arched">Arrondie/Cintrée (Style Classique)</option>
+        </select>
+        
+        <button id="processButton" onclick="processImage()" disabled style="margin-top: 20px; padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            **Étape 3:** Générer l'Esquisse و المقاييس
+        </button>
+        
+        <progress id="progressBar" value="0" max="100" style="width: 100%; margin-top: 15px; display: none;"></progress>
+        <p id="progressPercent" style="margin-top: 5px; font-weight: bold; display: none; color: #28a745;"></p>
+    </div>
+
+    <div class="image-display">
+        <div class="image-box">
+            <h3>Image Originale (Source)</h3>
+            <img id="originalImage" alt="Image Originale" style="display:none;">
+        </div>
+        <div class="image-box">
+            <h3>Esquisse Ingénierie (Sortie AeroPlan - رسم المهندس)</h3>
+            <canvas id="outputCanvas" style="display:none;"></canvas>
+            
+            <div id="measurements" style="text-align: left; margin-top: 15px; font-size: 0.9em;"></div>
+            <p id="statusMessage"></p>
+
+            <div class="action-buttons" id="actionButtons" style="margin-top: 15px; display: none; justify-content: center;">
+                <button class="download-btn" onclick="downloadSketch()">
+                    ⬇️ Télécharger l'Esquisse (PNG)
+                </button>
+                <button class="clear-btn" onclick="clearData()">
+                    ❌ Effacer les Données
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const aerialImageUpload = document.getElementById('aerialImageUpload');
+    const groundImagesUpload = document.getElementById('groundImagesUpload');
+    const groundImagesPreview = document.getElementById('groundImagesPreview');
+    const originalImage = document.getElementById('originalImage');
+    const outputCanvas = document.getElementById('outputCanvas');
+    const processButton = document.getElementById('processButton');
+    const statusMessage = document.getElementById('statusMessage');
+    const measurementsDiv = document.getElementById('measurements');
+    const scaleFactorInput = document.getElementById('scaleFactor');
+    const floorCountInput = document.getElementById('floorCount');
+    const windowTypeInput = document.getElementById('windowType');
+    const actionButtons = document.getElementById('actionButtons');
+    const autoModeCheckbox = document.getElementById('autoMode');
+    const manualFieldsDiv = document.getElementById('manualFields');
+    
+    let aerialImageLoaded = false;
+    let groundImageBuffers = [];
+    
+    function checkButtonStatus() {
+        processButton.disabled = !aerialImageLoaded;
+    }
+    
+    function toggleManualFields() {
+        if (autoModeCheckbox.checked) {
+            manualFieldsDiv.classList.add('disabled');
+        } else {
+            manualFieldsDiv.classList.remove('disabled');
+        }
+    }
+    
+    toggleManualFields();
+    autoModeCheckbox.addEventListener('change', toggleManualFields);
+
+    aerialImageUpload.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                originalImage.src = e.target.result;
+                originalImage.style.display = 'block';
+                aerialImageLoaded = true; 
+                checkButtonStatus(); 
+                outputCanvas.style.display = 'none';
+                actionButtons.style.display = 'none';
+                measurementsDiv.innerHTML = '';
+                statusMessage.textContent = 'Image aérienne chargée. Prêt pour AeroPlan...';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            aerialImageLoaded = false;
+            checkButtonStatus(); 
+        }
+    });
+
+    groundImagesUpload.addEventListener('change', async function(event) {
+        groundImageBuffers = [];
+        groundImagesPreview.innerHTML = '';
+        const files = event.target.files;
+        if
